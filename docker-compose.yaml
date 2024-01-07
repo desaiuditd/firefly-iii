@@ -1,0 +1,86 @@
+services:
+
+  app:
+    image: fireflyiii/core:latest
+    env_file: .env
+    tty: true
+    stdin_open: true
+    restart: unless-stopped
+    ports:
+      - 8080
+    depends_on:
+      - db
+      - redis
+    links:
+      - db
+      - redis
+    volumes:
+      - upload-data:/var/www/html/storage/upload
+    networks:
+      - traefik-reverse-proxy_default
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.firefly.tls=true
+      - traefik.http.routers.firefly.entrypoints=web-secure
+      - traefik.http.routers.firefly.rule=(Host(`firefly.lvh.me`))
+      - traefik.http.services.firefly.loadbalancer.server.port=8080
+
+  cron:
+    #
+    # To make this work, set STATIC_CRON_TOKEN in your .env file or as an environment variable and replace REPLACEME below
+    # The STATIC_CRON_TOKEN must be *exactly* 32 characters long
+    #
+    image: alpine:latest
+    restart: unless-stopped
+    command: sh -c "echo \"0 3 * * * wget -qO- http://app:8080/api/v1/cron/Po02ULWfVK510ipZtDrttZndfupV8aCH\" | crontab - && crond -f -L /dev/stdout"
+    networks:
+      - traefik-reverse-proxy_default
+
+  importer:
+    image: fireflyiii/data-importer:latest
+    restart: unless-stopped
+    networks:
+      - traefik-reverse-proxy_default
+    ports:
+      - 8080
+    depends_on:
+      - app
+    links:
+      - app
+    env_file: .importer.env
+    volumes:
+      - ./configurations:/configurations
+      - ./import:/import
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.firefly-importer.tls=true
+      - traefik.http.routers.firefly-importer.entrypoints=web-secure
+      - traefik.http.routers.firefly-importer.rule=(Host(`firefly-importer.lvh.me`))
+      - traefik.http.services.firefly-importer.loadbalancer.server.port=8080
+
+  db:
+    image: arm64v8/mysql:8.2.0
+    env_file: .db.env
+    restart: unless-stopped
+    volumes:
+      - db-data:/var/lib/mysql
+    ports:
+      - 3306
+    networks:
+      - traefik-reverse-proxy_default
+
+  redis:
+    image: redis:latest
+    restart: unless-stopped
+    ports:
+      - 6379
+    networks:
+      - traefik-reverse-proxy_default
+
+volumes:
+  upload-data:
+  db-data:
+
+networks:
+  traefik-reverse-proxy_default:
+    external: true

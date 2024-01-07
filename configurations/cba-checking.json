@@ -1,0 +1,20 @@
+{
+  "add_import_tag": true,
+  "conversion": true,
+  "date": "d/m/Y",
+  "default_account": 1,
+  "delimiter": "comma",
+  "duplicate_detection_method": "classic",
+  "flow": "csv",
+  "headers": false,
+  "ignore_duplicate_lines": false,
+  "ignore_duplicate_transactions": false,
+  "roles": [
+    "date_transaction",
+    "amount",
+    "description",
+    "_ignore"
+  ],
+  "rules": true,
+  "version": 3
+}
